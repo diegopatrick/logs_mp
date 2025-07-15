@@ -1,0 +1,219 @@
+openapi: 3.0.0
+info:
+  title: API de Logs & Auditoria
+  description: API para registro e auditoria de logs com garantia de imutabilidade e rastreabilidade
+  version: 1.0.0
+  contact:
+    email: suporte@exemplo.com
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Servidor de desenvolvimento
+
+components:
+  securitySchemes:
+    ApiToken:
+      type: apiKey
+      in: header
+      name: X-API-Token
+
+  schemas:
+    Log:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID único do log
+        user_id:
+          type: string
+          description: ID do usuário
+        system:
+          type: string
+          description: Sistema que gerou o log
+        action_type:
+          type: string
+          description: Tipo de ação realizada
+        resource:
+          type: string
+          description: Recurso afetado
+        result:
+          type: string
+          description: Resultado da ação
+        ip:
+          type: string
+          description: IP do usuário
+        payload:
+          type: object
+          description: Dados adicionais
+        is_sensitive:
+          type: boolean
+          description: Indica se o log contém dados sensíveis
+        hash:
+          type: string
+          description: Hash de integridade
+        timestamp:
+          type: string
+          format: date-time
+          description: Data e hora do log
+      required:
+        - user_id
+        - system
+        - action_type
+        - resource
+        - result
+        - ip
+
+paths:
+  /logs:
+    post:
+      summary: Registra um novo log
+      security:
+        - ApiToken: []
+      tags:
+        - Logs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Log'
+      responses:
+        '201':
+          description: Log registrado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Log'
+        '401':
+          description: Não autorizado
+        '422':
+          description: Dados inválidos
+
+    get:
+      summary: Busca logs com filtros
+      security:
+        - ApiToken: []
+      tags:
+        - Logs
+      parameters:
+        - in: query
+          name: user_id
+          schema:
+            type: string
+        - in: query
+          name: system
+          schema:
+            type: string
+        - in: query
+          name: action_type
+          schema:
+            type: string
+        - in: query
+          name: date_start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: date_end
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 15
+      responses:
+        '200':
+          description: Lista de logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Log'
+        '401':
+          description: Não autorizado
+
+  /logs/export:
+    get:
+      summary: Exporta logs
+      security:
+        - ApiToken: []
+      tags:
+        - Logs
+      parameters:
+        - in: query
+          name: format
+          required: true
+          schema:
+            type: string
+            enum: [csv, json]
+        - in: query
+          name: date_start
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: date_end
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Arquivo de logs
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Log'
+        '401':
+          description: Não autorizado
+        '422':
+          description: Parâmetros inválidos
+
+  /logs/{id}/verify:
+    get:
+      summary: Verifica integridade do log
+      security:
+        - ApiToken: []
+      tags:
+        - Logs
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resultado da verificação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  is_valid:
+                    type: boolean
+        '401':
+          description: Não autorizado
+        '404':
+          description: Log não encontrado 
